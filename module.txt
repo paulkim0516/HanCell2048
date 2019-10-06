@@ -1,0 +1,412 @@
+Option Explicit
+
+Public Const APP_TITLE = "2048"
+
+Public moveCount
+Public totalScore
+Public bestScore
+Public SIZE
+Public rStart
+Public cStart
+
+Function getTile(Direction, Row, Col)
+
+	rStart = Worksheets("config").Cells(2, 1) - 1
+	cStart = Worksheets("config").Cells(2, 2) - 1
+	SIZE = Worksheets("config").Cells(2, 3)
+	moveCount = Worksheets("config").Cells(5, 1)
+	totalScore = Worksheets("config").Cells(5, 2)
+	bestScore = Worksheets("config").Cells(5, 3)
+	
+	Select Case Direction
+	        Case "L"
+	            getTile = Worksheets("Data").Cells(Row, Col)
+	        Case "R"
+	            getTile = Worksheets("Data").Cells(Row, SIZE + 1 - Col)
+	        Case "U"
+	            getTile = Worksheets("Data").Cells(Col, SIZE + 1 - Row)
+	        Case "D"
+	            getTile = Worksheets("Data").Cells(SIZE + 1 - Col, Row)
+	        Case Else
+        Exit Function
+    End Select
+End Function
+
+Sub setTile(Direction, Row, Col, Value)
+
+	rStart = Worksheets("config").Cells(2, 1) - 1
+	cStart = Worksheets("config").Cells(2, 2) - 1
+	SIZE = Worksheets("config").Cells(2, 3)
+	moveCount = Worksheets("config").Cells(5, 1)
+	totalScore = Worksheets("config").Cells(5, 2)
+	bestScore = Worksheets("config").Cells(5, 3)
+
+	Select Case Direction
+        Case "L"
+            Worksheets("Data").Cells(Row, Col) = Value
+        Case "R"
+            Worksheets("Data").Cells(Row, SIZE + 1 - Col) = Value
+        Case "U"
+            Worksheets("Data").Cells(Col, SIZE + 1 - Row) = Value
+        Case "D"
+            Worksheets("Data").Cells(SIZE + 1 - Col, Row) = Value
+        Case Else
+    End Select
+End Sub
+
+Sub MakeMove(Direction)
+
+	rStart = Worksheets("config").Cells(2, 1) - 1
+	cStart = Worksheets("config").Cells(2, 2) - 1
+	SIZE = Worksheets("config").Cells(2, 3)
+	moveCount = Worksheets("config").Cells(5, 1)
+	totalScore = Worksheets("config").Cells(5, 2)
+	bestScore = Worksheets("config").Cells(5, 3)
+
+    Dim bIsMove
+    Dim R
+    Dim C
+    Dim I
+    Dim scoreTemp
+    Dim Tile
+    scoreTemp = 0
+   
+    For R = 1 To SIZE
+        For C = 1 To SIZE - 1
+           
+            ' Move from next tile over if empty:
+            If getTile(Direction, R, C) = 0 Then
+                For I = C + 1 To SIZE
+                    If getTile(Direction, R, I) > 0 Then
+                        setTile Direction, R, C, getTile(Direction, R, I)
+                        setTile Direction, R, I, 0
+                        bIsMove = True
+                        Exit For
+                    End If
+                Next
+            End If
+            ' Combine with next tile over if they match:
+            If getTile(Direction, R, C) > 0 Then
+                For I = C + 1 To SIZE
+                    If getTile(Direction, R, I) > 0 Then
+                        If getTile(Direction, R, C) = getTile(Direction, R, I) Then
+                            scoreTemp = scoreTemp + 2 * 2 ^ getTile(Direction, R, C)
+                            setTile Direction, R, C, getTile(Direction, R, C) + 1
+                            setTile Direction, R, I, 0
+                            bIsMove = True
+                        End If
+                        Exit For    ' stop combining after first non-empty tile
+                    End If
+                Next
+            End If
+        Next
+    Next
+   
+    Worksheets("config").Cells(5, 2) = totalScore + scoreTemp
+    If bIsMove Then
+	    AddTile
+	    FormatTiles
+	    Worksheets("config").Cells(5, 1) = moveCount + 1
+	    StoreUndoData Direction
+    End If
+    
+    If IsGameOver Then
+    	MsgBox("GAME OVER")
+    End If
+    
+End Sub
+
+' ------------------------------------------------------------
+
+Sub LeftArrowPressed()
+    MakeMove "L"
+End Sub
+
+
+Sub RightArrowPressed()
+    MakeMove "R"
+End Sub
+
+
+Sub UpArrowPressed()
+    MakeMove "U"
+End Sub
+
+
+Sub DownArrowPressed()
+    MakeMove "D"
+End Sub
+
+' ------------------------------------------------------------
+
+
+Sub FormatTiles()
+
+	rStart = Worksheets("config").Cells(2, 1) - 1
+	cStart = Worksheets("config").Cells(2, 2) - 1
+	SIZE = Worksheets("config").Cells(2, 3)
+	moveCount = Worksheets("config").Cells(5, 1)
+	totalScore = Worksheets("config").Cells(5, 2)
+	bestScore = Worksheets("config").Cells(5, 3)
+
+	Dim colorArray
+	Dim R
+	Dim C
+	
+	colorArray = Array(&HB4C1CD, &HDAE4EE, &HC8E0ED, &H79B1F2, &H6395F5, &H5F7CF6, &H3B5EF6, &H72CFED, &H61CCED, &H50C8ED, &H3FC5ED, &H2EC2ED, &H323A3C)
+	
+	For R = 1 To SIZE
+		For C = 1 To SIZE
+			With Worksheets("Game").Cells(R + rStart, C + cStart)
+				Select Case Worksheets("Data").Cells(R, C)
+					Case 0
+						.Interior.Color = colorArray(Worksheets("Data").Cells(R, C))
+						.Interior.Pattern = xlPatternSolid
+						.Font.Color = &HB4C1CD&
+					Case 1
+						.Interior.Color = colorArray(Worksheets("Data").Cells(R, C))
+						.Interior.Pattern = xlPatternSolid
+						.Font.Color = &H656E77&
+					Case 2
+						.Interior.Color = colorArray(Worksheets("Data").Cells(R, C))
+						.Interior.Pattern = xlPatternSolid
+						.Font.Color = &H656E77&
+					Case 3
+						.Interior.Color = colorArray(Worksheets("Data").Cells(R, C))
+						.Interior.Pattern = xlPatternSolid
+						.Font.Color = &HF2F6F9&
+					Case 4
+						.Interior.Color = colorArray(Worksheets("Data").Cells(R, C))
+						.Interior.Pattern = xlPatternSolid
+						.Font.Color = &HF2F6F9&
+					Case 5
+						.Interior.Color = colorArray(Worksheets("Data").Cells(R, C))
+						.Interior.Pattern = xlPatternSolid
+						.Font.Color = &HF2F6F9&
+					Case 6
+						.Interior.Color = colorArray(Worksheets("Data").Cells(R, C))
+						.Interior.Pattern = xlPatternSolid
+						.Font.Color = &HF2F6F9&
+					Case 7
+						.Interior.Color = colorArray(Worksheets("Data").Cells(R, C))
+						.Interior.Pattern = xlPatternSolid
+						.Font.Color = &HF2F6F9&
+					Case 8
+						.Interior.Color = colorArray(Worksheets("Data").Cells(R, C))
+						.Interior.Pattern = xlPatternSolid
+						.Font.Color = &HF2F6F9&
+					Case 9
+						.Interior.Color = colorArray(Worksheets("Data").Cells(R, C))
+						.Interior.Pattern = xlPatternSolid
+						.Font.Color = &HF2F6F9&
+					Case 10
+						.Interior.Color = colorArray(Worksheets("Data").Cells(R, C))
+						.Interior.Pattern = xlPatternSolid
+						.Font.Color = &HF2F6F9&
+					Case 11
+						.Interior.Color = colorArray(Worksheets("Data").Cells(R, C))
+						.Interior.Pattern = xlPatternSolid
+						.Font.Color = &HF2F6F9&
+					Case Else
+						.Interior.Color = colorArray(12)
+						.Interior.Pattern = xlPatternSolid
+						.Font.Color = &HF2F6F9&
+					End Select
+				End With
+				If Worksheets("Data").Cells(R, C) <> 0 Then
+    				Worksheets("Game").Cells(R + rStart, C + cStart) = 2 ^ Worksheets("Data").Cells(R, C)
+				End If
+		Next
+	Next
+End Sub
+
+Sub AddTile()
+
+	rStart = Worksheets("config").Cells(2, 1) - 1
+	cStart = Worksheets("config").Cells(2, 2) - 1
+	SIZE = Worksheets("config").Cells(2, 3)
+	moveCount = Worksheets("config").Cells(5, 1)
+	totalScore = Worksheets("config").Cells(5, 2)
+	bestScore = Worksheets("config").Cells(5, 3)
+
+	Dim R
+	Dim C
+	Dim k
+	Dim cell
+	Dim val
+	
+	k = 0
+	For R = 1 To SIZE
+		For C = 1 To SIZE
+			If Worksheets("Data").Cells(R, C) = 0 Then k = k + 1
+		Next
+	Next
+	
+	Randomize
+	cell = 1 + Int(k * Rnd)
+	
+	k = 0
+	For R = 1 To SIZE
+		For C = 1 To SIZE
+			If Worksheets("Data").Cells(R, C) = 0 Then
+				k = k + 1
+				If k = cell Then
+					Randomize
+					If Int(10 * Rnd) = 0 Then 
+						val = 2
+					Else
+						val = 1
+					End If
+					Worksheets("Data").Cells(R, C) = val
+				End If
+			End If
+		Next
+	Next
+	
+End Sub
+
+Sub StoreUndoData(sDirection)
+	
+	rStart = Worksheets("config").Cells(2, 1) - 1
+	cStart = Worksheets("config").Cells(2, 2) - 1
+	SIZE = Worksheets("config").Cells(2, 3)
+	moveCount = Worksheets("config").Cells(5, 1)
+	totalScore = Worksheets("config").Cells(5, 2)
+	bestScore = Worksheets("config").Cells(5, 3)
+	
+	Dim R
+	Dim C
+	Dim k
+	k = 1
+	
+	With Worksheets("Undo")
+		.Cells(moveCount + 1, 1) = moveCount
+		.Cells(moveCount + 1, 2) = sDirection
+		.Cells(moveCount + 1, 3) = totalScore
+	
+		For R = 1 To SIZE
+			For C = 1 To SIZE
+				.Cells(moveCount + 1, k + 3) = Worksheets("Data").Cells(R, C)
+				k = k + 1
+			Next
+		Next
+	End With
+
+End Sub
+
+Sub Undo()
+
+	rStart = Worksheets("config").Cells(2, 1) - 1
+	cStart = Worksheets("config").Cells(2, 2) - 1
+	SIZE = Worksheets("config").Cells(2, 3)
+	moveCount = Worksheets("config").Cells(5, 1)
+	totalScore = Worksheets("config").Cells(5, 2)
+	bestScore = Worksheets("config").Cells(5, 3)
+
+	Dim R
+	Dim C
+	Dim k
+	With Worksheets("Undo")
+		Worksheets("config").Cells(5, 1) = .Cells(moveCount, 1)
+		Worksheets("config").Cells(5, 2) = .Cells(moveCount, 3)
+		
+		For k = 4 To SIZE * SIZE + 3
+			Worksheets("Data").Cells(Int(k/4), k Mod 4 + 1) = .Cells(moveCount, k)
+		Next
+		
+		For k = 1 To SIZE * SIZE + 3
+			.Cells(moveCount + 1, k) = ""
+		Next
+	End With
+	
+	FormatTiles
+	
+End Sub
+
+Function IsGameOver()
+
+	rStart = Worksheets("config").Cells(2, 1) - 1
+	cStart = Worksheets("config").Cells(2, 2) - 1
+	SIZE = Worksheets("config").Cells(2, 3)
+	moveCount = Worksheets("config").Cells(5, 1)
+	totalScore = Worksheets("config").Cells(5, 2)
+	bestScore = Worksheets("config").Cells(5, 3)
+
+    Dim R
+    Dim C
+   
+    'No, if blank tiles exist
+    For R = 1 To SIZE:
+        For C = 1 To SIZE
+            If Worksheets("Data").Cells(R, C) = 0 Then Exit Function
+        Next
+    Next
+   
+    'No, if tiles can be merged
+    For R = 1 To SIZE - 1
+        For C = 1 To SIZE
+            If Worksheets("Data").Cells(R, C) = Worksheets("Data").Cells(R + 1, C) Then
+                Exit Function
+            End If
+        Next
+    Next
+   
+    For C = 1 To SIZE - 1
+        For R = 1 To SIZE
+            If Worksheets("Data").Cells(R, C) = Worksheets("Data").Cells(R, C + 1) Then
+                Exit Function
+            End If
+        Next
+    Next
+   
+    IsGameOver = True
+
+End Function
+
+Sub StartNewGame()
+
+	rStart = Worksheets("config").Cells(2, 1) - 1
+	cStart = Worksheets("config").Cells(2, 2) - 1
+	SIZE = Worksheets("config").Cells(2, 3)
+	moveCount = Worksheets("config").Cells(5, 1)
+	totalScore = Worksheets("config").Cells(5, 2)
+	
+	If totalScore > bestScore Then Worksheets("config").Cells(5, 3) = totalScore
+	
+	Dim R
+	Dim C
+	
+	'ThisWorkbook.Activate
+	
+	Worksheets("config").Cells(5, 1) = 0
+	Worksheets("config").Cells(5, 2) = 0
+	
+	Dim data()
+	ReDim data(SIZE, SIZE)
+	For R = 1 To SIZE
+		For C = 1 To SIZE
+			Worksheets("Data").Cells(R, C) = 0
+		Next
+	Next
+	
+	AddTile
+	AddTile
+	
+	For R = 1 To SIZE
+		For C = 1 To SIZE
+			data(R, C) = Worksheets("Data").Cells(R, C)
+		Next
+	Next
+	
+	Worksheets("Undo").UsedRange.ClearContents
+	StoreUndoData ""
+	
+	For R = 1 To SIZE
+		For C = 1 To SIZE
+			Worksheets("Game").Cells(R + rStart, C + cStart) = data(R, C)
+		Next
+	Next
+	
+	FormatTiles
+
+End Sub
