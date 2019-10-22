@@ -1,6 +1,9 @@
+
 Option Explicit
 
 Public Const APP_TITLE = "2048"
+Public Const UNDO_ENABLE = 1
+Public Const UNDO_DISABLE = 0
 
 Public moveCount
 Public totalScore
@@ -73,9 +76,7 @@ Sub MakeMove(Direction)
    
     For R = 1 To SIZE
         For C = 1 To SIZE - 1
-           
-            ' Move from next tile over if empty:
-            If getTile(Direction, R, C) = 0 Then
+           If getTile(Direction, R, C) = 0 Then
                 For I = C + 1 To SIZE
                     If getTile(Direction, R, I) > 0 Then
                         setTile Direction, R, C, getTile(Direction, R, I)
@@ -85,17 +86,17 @@ Sub MakeMove(Direction)
                     End If
                 Next
             End If
-            ' Combine with next tile over if they match:
+            
             If getTile(Direction, R, C) > 0 Then
                 For I = C + 1 To SIZE
                     If getTile(Direction, R, I) > 0 Then
                         If getTile(Direction, R, C) = getTile(Direction, R, I) Then
                             scoreTemp = scoreTemp + 2 * 2 ^ getTile(Direction, R, C)
-                            setTile Direction, R, C, getTile(Direction, R, C) + 1
+                            setTile Direction, R, C, getTile(Direction, R, C)+1
                             setTile Direction, R, I, 0
                             bIsMove = True
                         End If
-                        Exit For    ' stop combining after first non-empty tile
+                        Exit For
                     End If
                 Next
             End If
@@ -108,6 +109,7 @@ Sub MakeMove(Direction)
 	    FormatTiles
 	    Worksheets("config").Cells(5, 1) = moveCount + 1
 	    StoreUndoData Direction
+	    Worksheets("config").Cells(5, 4) = UNDO_ENABLE
     End If
     
     If IsGameOver Then
@@ -158,63 +160,27 @@ Sub FormatTiles()
 	For R = 1 To SIZE
 		For C = 1 To SIZE
 			With Worksheets("Game").Cells(R + rStart, C + cStart)
+				.Interior.Pattern = xlPatternSolid
+				If Worksheets("Data").Cells(R, C) < 12 Then
+					.Interior.Color = colorArray(Worksheets("Data").Cells(R, C))
+				Else
+					.Interior.Color = colorArray(12)
+				End If
 				Select Case Worksheets("Data").Cells(R, C)
 					Case 0
-						.Interior.Color = colorArray(Worksheets("Data").Cells(R, C))
-						.Interior.Pattern = xlPatternSolid
 						.Font.Color = &HB4C1CD&
 					Case 1
-						.Interior.Color = colorArray(Worksheets("Data").Cells(R, C))
-						.Interior.Pattern = xlPatternSolid
 						.Font.Color = &H656E77&
 					Case 2
-						.Interior.Color = colorArray(Worksheets("Data").Cells(R, C))
-						.Interior.Pattern = xlPatternSolid
 						.Font.Color = &H656E77&
-					Case 3
-						.Interior.Color = colorArray(Worksheets("Data").Cells(R, C))
-						.Interior.Pattern = xlPatternSolid
-						.Font.Color = &HF2F6F9&
-					Case 4
-						.Interior.Color = colorArray(Worksheets("Data").Cells(R, C))
-						.Interior.Pattern = xlPatternSolid
-						.Font.Color = &HF2F6F9&
-					Case 5
-						.Interior.Color = colorArray(Worksheets("Data").Cells(R, C))
-						.Interior.Pattern = xlPatternSolid
-						.Font.Color = &HF2F6F9&
-					Case 6
-						.Interior.Color = colorArray(Worksheets("Data").Cells(R, C))
-						.Interior.Pattern = xlPatternSolid
-						.Font.Color = &HF2F6F9&
-					Case 7
-						.Interior.Color = colorArray(Worksheets("Data").Cells(R, C))
-						.Interior.Pattern = xlPatternSolid
-						.Font.Color = &HF2F6F9&
-					Case 8
-						.Interior.Color = colorArray(Worksheets("Data").Cells(R, C))
-						.Interior.Pattern = xlPatternSolid
-						.Font.Color = &HF2F6F9&
-					Case 9
-						.Interior.Color = colorArray(Worksheets("Data").Cells(R, C))
-						.Interior.Pattern = xlPatternSolid
-						.Font.Color = &HF2F6F9&
-					Case 10
-						.Interior.Color = colorArray(Worksheets("Data").Cells(R, C))
-						.Interior.Pattern = xlPatternSolid
-						.Font.Color = &HF2F6F9&
-					Case 11
-						.Interior.Color = colorArray(Worksheets("Data").Cells(R, C))
-						.Interior.Pattern = xlPatternSolid
-						.Font.Color = &HF2F6F9&
 					Case Else
-						.Interior.Color = colorArray(12)
-						.Interior.Pattern = xlPatternSolid
 						.Font.Color = &HF2F6F9&
 					End Select
 				End With
 				If Worksheets("Data").Cells(R, C) <> 0 Then
     				Worksheets("Game").Cells(R + rStart, C + cStart) = 2 ^ Worksheets("Data").Cells(R, C)
+    			Else
+    				Worksheets("Data").Cells(R, C) = 0
 				End If
 		Next
 	Next
@@ -295,32 +261,33 @@ Sub StoreUndoData(sDirection)
 End Sub
 
 Sub Undo()
-
-	rStart = Worksheets("config").Cells(2, 1) - 1
-	cStart = Worksheets("config").Cells(2, 2) - 1
-	SIZE = Worksheets("config").Cells(2, 3)
-	moveCount = Worksheets("config").Cells(5, 1)
-	totalScore = Worksheets("config").Cells(5, 2)
-	bestScore = Worksheets("config").Cells(5, 3)
-
-	Dim R
-	Dim C
-	Dim k
-	With Worksheets("Undo")
-		Worksheets("config").Cells(5, 1) = .Cells(moveCount, 1)
-		Worksheets("config").Cells(5, 2) = .Cells(moveCount, 3)
-		
-		For k = 4 To SIZE * SIZE + 3
-			Worksheets("Data").Cells(Int(k/4), k Mod 4 + 1) = .Cells(moveCount, k)
-		Next
-		
-		For k = 1 To SIZE * SIZE + 3
-			.Cells(moveCount + 1, k) = ""
-		Next
-	End With
+	If Worksheets("config").Cells(5, 4) = UNDO_ENABLE Then
+		rStart = Worksheets("config").Cells(2, 1) - 1
+		cStart = Worksheets("config").Cells(2, 2) - 1
+		SIZE = Worksheets("config").Cells(2, 3)
+		moveCount = Worksheets("config").Cells(5, 1)
+		totalScore = Worksheets("config").Cells(5, 2)
+		bestScore = Worksheets("config").Cells(5, 3)
 	
-	FormatTiles
-	
+		Dim R
+		Dim C
+		Dim k
+		With Worksheets("Undo")
+			Worksheets("config").Cells(5, 1) = .Cells(moveCount, 1)
+			Worksheets("config").Cells(5, 2) = .Cells(moveCount, 3)
+			
+			For k = 4 To SIZE * SIZE + 3
+				Worksheets("Data").Cells(Int(k/4), k Mod 4 + 1) = .Cells(moveCount, k)
+			Next
+			
+			For k = 1 To SIZE * SIZE + 3
+				.Cells(moveCount + 1, k) = ""
+			Next
+		End With
+		
+		FormatTiles
+		Worksheets("config").Cells(5, 4) = UNDO_DISABLE
+	End If
 End Sub
 
 Function IsGameOver()
@@ -380,6 +347,7 @@ Sub StartNewGame()
 	
 	Worksheets("config").Cells(5, 1) = 0
 	Worksheets("config").Cells(5, 2) = 0
+	Worksheets("config").Cells(5, 4) = UNDO_DISABLE
 	
 	Dim data()
 	ReDim data(SIZE, SIZE)
